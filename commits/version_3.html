@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>After-School Learning Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
+    <link rel="stylesheet" href="cw2styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <script src="cw2products.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <h1 v-text="sitename"></h1>
+            <input type="text" v-model="searchQuery" placeholder="Search..." class="search-bar">
+            <button v-if="!showProduct" @click="showProduct = true" id="home-button">Home</button>
+            <button v-if="showProduct && cartItemCount > 0" @click="goToCheckout" id="checkout-button">
+                {{ cartItemCount }}
+                <i class="fa-solid fa-cart-shopping"></i> Checkout
+            </button>
+                      
+        </header>
+
+        <main>
+            <div v-if="showProduct">
+                <!-- Sorting options -->
+                <div>
+                    <label for="sort">Sort by:</label>
+                    <select v-model="sortBy">
+                        <option value="title">Subject</option>
+                        <option value="price">Price</option>
+                        <option value="location">Location</option>
+                        <option value="inventory">Available Spots</option>
+                    </select>
+
+                    <label for="direction">Direction:</label>
+                    <select v-model="sortDirection">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+
+                <!-- Products List -->
+                <div class="product-grid">
+                    <div v-for="product in sortedProducts()" class="product">
+                        <figure>
+                            <img v-bind:src="product.image" alt="Product Image">
+                        </figure>
+                        <h2 v-text="product.title"></h2>
+                        <p v-html="product.description"></p>
+                        <p><strong>Location:</strong> {{ product.location }}</p>
+                        <p class="price">Price: {{ product.price }}</p>
+                        <p>Available Spots: {{ product.availableInventory - cartCount(product.id) }}</p>
+
+                        <button v-on:click="addToCart(product)" v-if="canAddToCart(product)">Add to cart</button>
+                        <span v-if="product.availableInventory === cartCount(product.id)">All out!</span>
+                        <span v-else-if="product.availableInventory - cartCount(product.id) < 5">
+                            Only {{ product.availableInventory - cartCount(product.id) }} left!
+                        </span>
+                        <span v-else>Buy now!</span>
+
+                        <div>
+                            <span v-for="n in product.rating">★</span>
+                            <span v-for="n in 5 - product.rating">☆</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else class="checkout">
+                <h2>Checkout</h2>
+
+                <!-- Display cart items in checkout -->
+                <div v-if="cart.length">
+                    <h3>Your Cart</h3>
+                    <ul>
+                        <li v-for="(cartItem, index) in cart" :key="cartItem.id" class="cart-item">
+                            <img :src="cartItem.image" alt="Product Image" class="cart-item-image">
+                            <div class="cart-item-details">
+                                <h4>{{ cartItem.title }}</h4>
+                

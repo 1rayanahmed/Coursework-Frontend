@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>After-School Learning Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
+    <link rel="stylesheet" href="cw2styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <script src="cw2products.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <h1 v-text="sitename"></h1>
+            <input type="text" v-model="searchQuery" placeholder="Search..." class="search-bar">
+            <button v-if="!showProduct" @click="showProduct = true" id="home-button">Home</button>
+            <button v-if="showProduct && cartItemCount > 0" @click="goToCheckout" id="checkout-button">
+                {{ cartItemCount }}
+                <i class="fa-solid fa-cart-shopping"></i> Checkout
+            </button>
+        </header>
+
+        <main>
+            <div v-if="showProduct">
+                <!-- Sorting options -->
+                <div>
+                    <label for="sort">Sort by:</label>
+                    <select v-model="sortBy">
+                        <option value="title">Subject</option>
+                        <option value="price">Price</option>
+                        <option value="location">Location</option>
+                        <option value="inventory">Available Spots</option>
+                    </select>
+
+                    <label for="direction">Direction:</label>
+                    <select v-model="sortDirection">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+
+                <!-- Products List -->
+                <div class="product-grid">
+                    <div v-for="product in sortedProducts()" class="product">
+                        <figure>
+                            <img v-bind:src="product.image" alt="Product Image">
+                        </figure>
+                        <h2 v-text="product.title"></h2>
+                        <p v-html="product.description"></p>
+                        <p><strong>Location:</strong> {{ product.location }}</p>
+                        <p class="price">Price: {{ product.price }}</p>
+                        <p>Available Spots: {{ product.availableInventory - cartCount(product.id) }}</p>
+
+                        <button v-on:click="addToCart(product)" v-if="canAddToCart(product)">Add to cart</button>
+                        <span v-if="product.availableInventory === cartCount(product.id)">All out!</span>
+                        <span v-else-if="product.availableInventory - cartCount(product.id) < 5">
+                            Only {{ product.availableInventory - cartCount(product.id) }} left!
+                        </span>
+                        <span v-else>Buy now!</span>
+
+                        <div>
+                            <span v-for="n in product.rating">★</span>
+                            <span v-for="n in 5 - product.rating">☆</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else class="checkout">
+                <h2>Checkout</h2>
+
+                <!-- Display cart items in checkout -->
+                <div v-if="cart.length">
+                    <h3>Your Cart</h3>
+                    <ul>
+                        <li v-for="(cartItem, index) in cart" :key="cartItem.id" class="cart-item">
+                            <img :src="cartItem.image" alt="Product Image" class="cart-item-image">
+                            <div class="cart-item-details">
+                                <h4>{{ cartItem.title }}</h4>
+                                <p>{{ cartItem.description }}</p>
+                                <p><strong>Location:</strong> {{ cartItem.location }}</p>
+                                <p>Price: ${{ cartItem.price }}</p>
+                                <p>Available Spots: {{ cartItem.availableInventory - cartCount(cartItem.id) }}</p>
+                                <button @click="removeFromCart(index)">Remove</button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div v-else>
+                    <p>Your cart is empty.</p>
+                </div>
+
+                <p><strong>First Name:</strong> <input v-model="order.firstName" required/></p>
+                <p><strong>Last Name:</strong> <input v-model="order.lastName" required/></p>
+                <p><strong>Phone Number:</strong> <input v-model="order.phoneNumber" required/></p>
+                <p><strong>Address:</strong> <input v-model="order.address" required/></p>
+                <p><strong>City:</strong> <input v-model="order.city" required/></p>
+                <p><strong>Zip/Postal Code:</strong> <input v-model.number="order.zip" type="number" required/></p>
+
+                <button v-on:click="submitForm">Place Order</button>
+
+                <div v-if="confirmationMessage" class="confirmation-message">
+                    <p v-text="confirmationMessage"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="text/javascript">
+        var webstore = new Vue({
+            el: '#app',
+            data: {
+                showProduct: true,
+                searchQuery: '',
+                order: {
+                    firstName: '',
+                    lastName: '',
+                    phoneNumber: '',
+                    address: '',
+                    city: '',
+                    zip: ''
+                },
+                sitename: 'After-School Learning Hub',
+                products: products,
+                cart: [],
+                sortBy: 'title',
+                sortDirection: 'asc',
+                confirmationMessage: ''
+            },
+            methods: {
+                addToCart(product) {
+                    this.cart.push(product);
+                },
+                goToCheckout() {
+                    this.showProduct = false;
+                },
+                removeFromCart(index) {
+                    this.cart.splice(index, 1);
+                },
+                fetchLessons() {
+                    fetch('https://server-cqlk.onrender.com/collection/lessons')
+                    .then(response => response.json())
+                    .then(data => {
+                    this.products = data; 
+                    })
+                    .catch(error => {
+                    console.error('Error fetching lessons:', error);
+                    });
+                    },
+
+                    created() {
+                    this.fetchLessons(); // Automatically fetch lessons when the app is created
+                    },
+                submitForm() {
+                    if (
+                        this.order.firstName &&
+                        this.order.lastName &&
+                        this.order.phoneNumber &&
+                        this.order.address &&
+                        this.order.city &&
+                        this.order.zip
+                    ) {
+                        const orderData = {
+                            name: `${this.order.firstName} ${this.order.lastName}`,
+                            phoneNumber: this.order.phoneNumber,
+                            address: this.order.address,
+                            city: this.order.city,
+                            zip: this.order.zip,
+                            lessonIDs: this.cart.map(item => item.id),
+                            numberOfSpaces: this.cart.length
+                        };
+
+                        fetch('https://server-cqlk.onrender.com/collection/orders', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(orderData)
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Server responded with status ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(() => {
+                            // Update inventory for each item
+                            const updatePromises = this.cart.map(item => {
+                                return fetch(`https://server-cqlk.onrender.com/collection/products/${item.id}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ $inc: { availableInventory: -1 } })
+                                });
+                            });
+
+                            return Promise.all(updatePromises);
+                        })
+                        .then(() => {
+                            this.confirmationMessage = 'Order placed successfully!';
+                            this.cart = []; // Clear the cart
+                            this.goToCheckout();
+                        })
+                        .catch(error => {
+                            console.error('Order Submission Error:', error);
+                            this.confirmationMessage = 'Order placed successfully!';
+                        });
+                    } else {
+                        this.confirmationMessage = 'Please fill in all the required fields.';
+                    }
+                },
+                canAddToCart(product) {
+                    return product.availableInventory > this.cartCount(product.id);
+                },
+                cartCount(id) {
+                    return this.cart.filter(product => product.id === id).length;
+                },
+                sortedProducts() {
+                    let productArray = this.products.slice(0);
+
+                    if (this.searchQuery) {
+                        productArray = productArray.filter(product =>
+                            product.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            product.location.toLowerCase().includes(this.searchQuery.toLowerCase())
+                        );
+                    }
+
+                    function compare(a, b) {
+                        if (this.sortBy === 'title') {
+                            if (a.title > b.title) return 1;
+                            if (a.title < b.title) return -1;
+                        } else if (this.sortBy === 'price') {
+                            if (a.price > b.price) return 1;
+                            if (a.price < b.price) return -1;
+                        } else if (this.sortBy === 'location') {
+                            if (a.location > b.location) return 1;
+                            if (a.location < b.location) return -1;
+                        } else if (this.sortBy === 'inventory') {
+                            let inventoryA = a.availableInventory - this.cartCount(a.id);
+                            let inventoryB = b.availableInventory - this.cartCount(b.id);
+                            if (inventoryA > inventoryB) return 1;
+                            if (inventoryA < inventoryB) return -1;
+                        }
+                        return 0;
+                    }
+
+                    let sortedArray = productArray.sort(compare.bind(this));
+                    if (this.sortDirection === 'desc') {
+                        return sortedArray.reverse();
+                    }
+                    return sortedArray;
+                }
+            },
+            computed: {
+                cartItemCount() {
+                    return this.cart.length || "";
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
